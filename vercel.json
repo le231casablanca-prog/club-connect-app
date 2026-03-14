@@ -1,0 +1,15 @@
+{
+    "buildCommand": "npm run build",
+    "outputDirectory": "dist",
+    "framework": "vite",
+    "env": {
+        "VITE_SUPABASE_URL": "https://huifpiiejxamhiorntnt.supabase.co",
+        "VITE_SUPABASE_ANON_KEY": "sb_publishable_4gvhV4nmGjx5LhsRdnvkNw_oHE99uyB"
+    },
+    "build": {
+        "env": {
+            "VITE_SUPABASE_URL": "https://huifpiiejxamhiorntnt.supabase.co",
+            "VITE_SUPABASE_ANON_KEY": "sb_publishable_4gvhV4nmGjx5LhsRdnvkNw_oHE99uyB"
+        }
+    }
+}

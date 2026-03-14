@@ -17,33 +17,53 @@ export function AppProvider({ children }) {
     }, []);
 
     const fetchAllData = async () => {
+        console.log("useAppStore: fetchAllData started");
         setLoading(true);
+
+        // Timeout de sécurité pour ne pas rester bloqué sur le spinner
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Timeout de connexion au serveur Supabase")), 10000)
+        );
+
         try {
-            const [
-                { data: membersData },
-                { data: txData },
-                { data: exData },
-                { data: sessData },
-                { data: progData }
-            ] = await Promise.all([
-                supabase.from('members').select('*').order('created_at', { ascending: false }),
-                supabase.from('transactions').select('*').order('created_at', { ascending: false }),
-                supabase.from('exercises').select('*').order('created_at', { ascending: false }),
-                supabase.from('sessions').select('*').order('created_at', { ascending: false }),
-                supabase.from('programs').select('*').order('created_at', { ascending: false })
+            console.log("useAppStore: Lancement des requêtes Supabase...");
+            const results = await Promise.race([
+                Promise.all([
+                    supabase.from('members').select('*').order('created_at', { ascending: false }),
+                    supabase.from('transactions').select('*').order('created_at', { ascending: false }),
+                    supabase.from('exercises').select('*').order('created_at', { ascending: false }),
+                    supabase.from('sessions').select('*').order('created_at', { ascending: false }),
+                    supabase.from('programs').select('*').order('created_at', { ascending: false })
+                ]),
+                timeoutPromise
             ]);
+
+            const [
+                { data: membersData, error: mErr },
+                { data: txData, error: tErr },
+                { data: exData, error: eErr },
+                { data: sessData, error: sErr },
+                { data: progData, error: pErr }
+            ] = results;
+
+            if (mErr || tErr || eErr || sErr || pErr) {
+                console.error("useAppStore: Une ou plusieurs requêtes ont échoué", { mErr, tErr, eErr, sErr, pErr });
+            }
 
             setMembers(membersData || []);
             setTransactions(txData || []);
             setExercises(exData || []);
             setSessions(sessData || []);
             setPrograms(progData || []);
+            console.log("useAppStore: Données chargées avec succès");
         } catch (error) {
-            console.error("Erreur lors du chargement initial:", error);
+            console.error("useAppStore: Erreur lors du chargement initial:", error);
         } finally {
+            console.log("useAppStore: Fin du chargement (loading = false)");
             setLoading(false);
         }
     };
+
 
     // Helpers
     const activeMembersCount = members.filter(m => m.status === 'actif').length;

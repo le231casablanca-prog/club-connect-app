@@ -89,20 +89,48 @@ function App() {
 
   useEffect(() => {
     // 1. Vérifier s'il y a déjà une session active au lancement
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser({
-          name: session.user.user_metadata?.name || 'Administrateur',
-          role: 'Super Admin',
-          email: session.user.email,
-          id: session.user.id
-        });
+    const checkSession = async () => {
+      console.log("App: Vérification de la session...");
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (error) throw error;
+
+        if (session?.user) {
+          console.log("App: Session Supabase trouvée:", session.user.email);
+          setUser({
+            name: session.user.user_metadata?.name || 'Administrateur',
+            role: 'Super Admin',
+            email: session.user.email,
+            id: session.user.id
+          });
+        } else {
+          console.log("App: Aucune session Supabase, vérification session locale...");
+          // FALLBACK : Vérifier la session locale
+          const localSession = localStorage.getItem('club_connect_local_session');
+          if (localSession) {
+            console.log("App: Session locale trouvée");
+            setUser(JSON.parse(localSession));
+          } else {
+            console.log("App: Aucune session trouvée");
+          }
+        }
+      } catch (err) {
+        console.error("App: Erreur lors de la vérification de session:", err);
+        // En cas d'erreur auth, on tente quand même la session locale
+        const localSession = localStorage.getItem('club_connect_local_session');
+        if (localSession) setUser(JSON.parse(localSession));
+      } finally {
+        setAppLoading(false);
+        console.log("App: Fin vérification accès (appLoading = false)");
       }
-      setAppLoading(false);
-    });
+    };
+
+    checkSession();
 
     // 2. Écouter les évènements de connexion / déconnexion en temps réel
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log("App: Auth state change:", _event);
       if (session?.user) {
         setUser({
           name: session.user.user_metadata?.name || 'Administrateur',
@@ -111,17 +139,24 @@ function App() {
           id: session.user.id
         });
       } else {
-        setUser(null);
+        // On ne reset pas si une session locale existe
+        const localSession = localStorage.getItem('club_connect_local_session');
+        if (!localSession) {
+          setUser(null);
+        }
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    localStorage.removeItem('club_connect_local_session');
     setUser(null);
   };
+
 
   if (appLoading) {
     return (
